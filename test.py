@@ -29,7 +29,7 @@ if __name__ == '__main__':
     print(f"X_train.shape: {X_train.shape}, y_train.shape: {y_train.shape}")
     print(f"X_valid.shape: {X_valid.shape}, y_valid.shape: {y_valid.shape}")
 
-    image_index = 5
+    image_index = 1
     img = X_valid[image_index]
     img = img.unsqueeze(0)
     img_noisy = np.transpose(img.data.numpy(), axes=(0, 3, 2, 1))

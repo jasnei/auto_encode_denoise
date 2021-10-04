@@ -1,14 +1,24 @@
+import os
+os.environ["WANDB_DISABLED"] = "true"
+import wandb
+wandb.login()
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
-import hiddenlayer as hl
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 from data import read_image, noisy_image
 from  model_design import DenoiseAutoEncoder
+from multiprocessing import freeze_support
 
 
 if __name__ == '__main__':
+    freeze_support()
+    wandb.init(project="Denoise_Auto_Encoder", entity="jasnei")
+    config = wandb.config
+    config.batch_size = 16
+    config.epochs = 10
+    config.lr = 3e-4
 
     data_path = r"E:\迅雷下载\stl10_binary\train_X.bin"
     images = read_image(data_path)
@@ -32,23 +42,20 @@ if __name__ == '__main__':
     train_dataset = TensorDataset(X_train, y_train)
     valid_dataset = TensorDataset(X_valid, y_valid)
 
-    train_loader = DataLoader(dataset=train_dataset, batch_size=16, shuffle=True, num_workers=4, pin_memory=True)
-    valid_loader = DataLoader(dataset=valid_dataset, batch_size=16, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    valid_loader = DataLoader(dataset=valid_dataset, batch_size=config.batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     model = DenoiseAutoEncoder()
     model.cuda()
-    LR = 3e-4
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     loss_fn = torch.nn.MSELoss()
-
-    history_1 = hl.History()
-    canvas_1 = hl.Canvas()
 
     train_num = 0
     valid_num = 0
 
+    wandb.watch(model)
     print("training...")
-    for epoch in range(10):
+    for epoch in range(config.epochs):
         print(f">>>epoch: {epoch + 1}")
         train_loss_epoch = 0
         valid_loss_epoch = 0
@@ -76,10 +83,11 @@ if __name__ == '__main__':
 
         train_loss = train_loss_epoch / train_num
         valid_loss = valid_loss_epoch / valid_num
-        history_1.log(epoch, train_loss=train_loss, valid_loss=valid_loss)
-        with canvas_1:
-            canvas_1.draw_plot([history_1["train_loss"], history_1["valid_loss"]])
 
+        wandb.log({'epoch': epoch,
+                    'train_loss': train_loss,
+                    'valid_loss': valid_loss,})
+    wandb.finish()
     torch.save({"state_dict": model.state_dict(),}, "./checkpoint/denois_auto_encoder.pth")
     print('Save model done!')
 
